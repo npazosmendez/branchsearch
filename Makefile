@@ -1,2 +1,5 @@
 main:
-	g++ -o branch branch.cpp -lncurses
+	g++ -o bs branchsearch.cpp -lncurses
+
+install: main
+	cp bs /bin/
