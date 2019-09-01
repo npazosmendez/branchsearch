@@ -14,7 +14,7 @@ Go into the repository's folder and running (if you want it installed automatica
 
 Otherwise you may run
 
-`sudo make`
+`make`
 
 and copy the generated exectable (`bs`) to your preferred location.
 
