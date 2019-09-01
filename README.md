@@ -8,7 +8,7 @@ You can install branchsearch by cloning the repo:
 
 `git clone https://github.com/npazosmendez/branchsearch.git`
 
-Go into the repository's folder and running (if you want it installed automatically):
+Go into the repository's folder and run (if you want it automatically installed):
 
 `sudo make install`
 
