@@ -99,7 +99,7 @@ bool update_branches(int argc, char** argv){
     bool pull_after_checkout = false;
     for (int i = 1; i < argc; i++) {  // ignore program name
         string arg = argv[i];
-        if (arg == "-P") system("git pull");
+        if (arg == "-f") system("git fetch");
         else if (arg == "-p") pull_after_checkout = true;
     }
     return pull_after_checkout;
