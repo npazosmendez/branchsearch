@@ -6,7 +6,7 @@ Disclaimer: suboptimal in many ways, but more than enough for what I need.
 
 `-p`: It checkouts to the selected branch and executes a `git pull`
     immediately afterwards.
-`-f`: It executes a `git fetch` _before_ showing the branches to be selected. It's useful to update branches before diplay.
+`-u`: It executes a `git fetch` _before_ showing the branches to be selected. It's useful to update branches before diplay.
 
 ![example](img.gif)
 
