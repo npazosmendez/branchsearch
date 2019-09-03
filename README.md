@@ -40,7 +40,7 @@ and copy the generated exectable (`bs`) to your preferred location.
 
 Suboptimal in many ways, but more than enough for what I need.
 
-### FAQ
+## FAQ
 
 - This could have been a simple python script
 
