@@ -39,3 +39,9 @@ and copy the generated exectable (`bs`) to your preferred location.
 #### Disclaimer
 
 Suboptimal in many ways, but more than enough for what I need.
+
+### FAQ
+
+- This could have been a simple python script
+
+First of all, how dare you. Secondly, that's not even a question. A python script wouldn't be as fun.
