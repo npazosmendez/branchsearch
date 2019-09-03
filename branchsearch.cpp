@@ -105,9 +105,39 @@ bool update_branches(int argc, char** argv){
     return pull_after_checkout;
 }
 
+bool fast_switch(int argc, char** argv, char* regex_value){
+    for (int i = 1; i < argc; i++) {  // ignore program name
+        if (argv[i][0] != '-'){
+            strcpy(regex_value, argv[i]);
+            return true;
+        }
+    }
+    return false;
+}
+
 int main(int argc, char** argv)
 {
     bool pull_after_checkout = update_branches(argc, argv);
+
+    // variables
+    char regex_value[MAX_BRANCH_NAME_LENGTH] = {0};
+    int index = 0;
+    int selected_branch = 0;
+    vector<string> all_branches = get_branches();
+    vector<string*> filtered_branches;
+    for (int i = 0; i < all_branches.size(); ++i){
+        filtered_branches.push_back(&all_branches[i]);
+    }
+
+    if (fast_switch(argc, argv, regex_value)){
+        filter_branches(all_branches, regex_value, filtered_branches);
+        if (filtered_branches.size()){
+            switch_to_branch(*filtered_branches[0], pull_after_checkout);
+        } else {
+            fprintf(stderr, "No branches matching '%s'\n", regex_value);
+            exit(1);
+        }
+    }
 
     // setup curses
     initscr();
@@ -120,15 +150,6 @@ int main(int argc, char** argv)
     use_default_colors();
     start_color();
 
-    // variables
-    char regex_value[MAX_BRANCH_NAME_LENGTH] = {0};
-    int index = 0;
-    int selected_branch = 0;
-    vector<string> all_branches = get_branches();
-    vector<string*> filtered_branches;
-    for (int i = 0; i < all_branches.size(); ++i){
-        filtered_branches.push_back(&all_branches[i]);
-    }
 
     print_window(regex_value, filtered_branches, selected_branch);
 
