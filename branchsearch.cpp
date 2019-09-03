@@ -69,10 +69,13 @@ void print_window(char* regex_value, vector<string*> filtered_branches, int sele
     refresh();
 }
 
-void switch_to_branch(string branch_name){
+void switch_to_branch(string branch_name, bool pull_after_checkout){
     endwin();
     string command = "git checkout " + branch_name;
     system(command.c_str());
+    if (pull_after_checkout) {
+        system("git pull");
+    }
     exit(0);
 }
 
@@ -88,10 +91,24 @@ void filter_branches(vector<string> &all_branches, char* regex_value, vector<str
     } catch(exception e){
         return;
     }
-}           
+}
 
-int main(int arg, char** argv)
+bool update_branches(int argc, char** argv){
+    if (argc <= 1) return false;
+
+    bool pull_after_checkout = false;
+    for (int i = 1; i < argc; i++) {  // ignore program name
+        string arg = argv[i];
+        if (arg == "-u") system("git fetch");
+        else if (arg == "-p") pull_after_checkout = true;
+    }
+    return pull_after_checkout;
+}
+
+int main(int argc, char** argv)
 {
+    bool pull_after_checkout = update_branches(argc, argv);
+
     // setup curses
     initscr();
     cbreak();
@@ -125,7 +142,7 @@ int main(int arg, char** argv)
                     regex_value[index] = 0;
                 }
             }else if (c == NEW_LINE){
-                if(filtered_branches.size()) switch_to_branch(*filtered_branches[selected_branch]);
+                if(filtered_branches.size()) switch_to_branch(*filtered_branches[selected_branch], pull_after_checkout);
             }else if (c == KEY_UP){
                 if(selected_branch > 0) selected_branch--;
             }else if (c == KEY_DOWN){
