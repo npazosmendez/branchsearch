@@ -8,11 +8,10 @@
 
 using namespace std;
 
-#define MAX_BRANCH_SHOWN 20
 #define MAX_BRANCH_NAME_LENGTH 200
-
 #define NEW_LINE 10
 
+int max_branch_shown = -1;
 
 int kbhit(void){
     int ch = getch();
@@ -56,7 +55,7 @@ void print_window(char* regex_value, vector<string*> filtered_branches, int sele
 
     // print branches
     int i = 0;
-    for (; i < filtered_branches.size() && i < MAX_BRANCH_SHOWN; ++i){
+    for (; i < filtered_branches.size() && i < max_branch_shown; ++i){
         addstr("  ");
         if(i == selected_branch) attrset(COLOR_PAIR(2));
         addstr(filtered_branches[i]->c_str());
@@ -129,6 +128,9 @@ int main(int argc, char** argv)
     for (int i = 0; i < all_branches.size(); ++i){
         filtered_branches.push_back(&all_branches[i]);
     }
+    int max_height, max_width;
+    getmaxyx(stdscr, max_height, max_width);
+    max_branch_shown = max_height - 5;
 
     print_window(regex_value, filtered_branches, selected_branch);
 
@@ -146,7 +148,7 @@ int main(int argc, char** argv)
             }else if (c == KEY_UP){
                 if(selected_branch > 0) selected_branch--;
             }else if (c == KEY_DOWN){
-                if(selected_branch < filtered_branches.size() && selected_branch < MAX_BRANCH_SHOWN - 1) selected_branch++;
+                if(selected_branch < filtered_branches.size() && selected_branch < max_branch_shown - 1) selected_branch++;
             }else{
                 // TODO: handle other keys
                 regex_value[index] = c;
