@@ -105,6 +105,8 @@ bool best_match(vector<string> &all_branches, char* pattern, string& res){
         if (b.find(pattern) != string::npos) matches.push_back(&b);
     }
 
+    if(!matches.size()) return false;
+
     // sort by some similarity criteria
     sort(matches.begin(),matches.end(), [pattern]( const string* a, const string* b)
         {
@@ -112,7 +114,7 @@ bool best_match(vector<string> &all_branches, char* pattern, string& res){
             if(a->find(pattern) == 0 and b->find(pattern) != 0) return true;
             if(b->find(pattern) == 0 and a->find(pattern) != 0) return false;
 
-            // the one close in length to the pattern is preferd
+            // the one closer in length to the pattern is preferd
             if(a->size()-strlen(pattern) < b->size()-strlen(pattern)) return true;
             if(b->size()-strlen(pattern) < a->size()-strlen(pattern)) return false;
 
@@ -121,8 +123,7 @@ bool best_match(vector<string> &all_branches, char* pattern, string& res){
         }
     );
 
-    if(!matches.size()) return false;
-    res = *matches[0];
+    res = *matches[0]; // only care about the best match here
     return true;
 }
 
