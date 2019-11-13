@@ -93,6 +93,39 @@ void filter_branches(vector<string> &all_branches, char* regex_value, vector<str
     }
 }
 
+bool best_match(vector<string> &all_branches, char* pattern, string& res){
+    // pattern to lowercase
+    std::transform(pattern, pattern+strlen(pattern), pattern, [](unsigned char c){ return std::tolower(c); });
+
+    // take the ones containing the pattern
+    vector<string*> matches;
+    for (string &b: all_branches){
+        // branch to lowercase
+        std::transform(b.begin(), b.end(), b.begin(), [](unsigned char c){ return std::tolower(c); });
+        if (b.find(pattern) != string::npos) matches.push_back(&b);
+    }
+
+    // sort by some similarity criteria
+    sort(matches.begin(),matches.end(), [pattern]( const string* a, const string* b)
+        {
+            // the one starting with the pattern is prefered
+            if(a->find(pattern) == 0 and b->find(pattern) != 0) return true;
+            if(b->find(pattern) == 0 and a->find(pattern) != 0) return false;
+
+            // the one close in length to the pattern is preferd
+            if(a->size()-strlen(pattern) < b->size()-strlen(pattern)) return true;
+            if(b->size()-strlen(pattern) < a->size()-strlen(pattern)) return false;
+
+            // tiebreaker
+            return *a < *b;
+        }
+    );
+
+    if(!matches.size()) return false;
+    res = *matches[0];
+    return true;
+}
+
 bool update_branches(int argc, char** argv){
     if (argc <= 1) return false;
 
@@ -121,6 +154,7 @@ int main(int argc, char** argv)
 
     // variables
     char regex_value[MAX_BRANCH_NAME_LENGTH] = {0};
+    char pattern[MAX_BRANCH_NAME_LENGTH] = {0};
     int index = 0;
     int selected_branch = 0;
     vector<string> all_branches = get_branches();
@@ -129,12 +163,12 @@ int main(int argc, char** argv)
         filtered_branches.push_back(&all_branches[i]);
     }
 
-    if (fast_switch(argc, argv, regex_value)){
-        filter_branches(all_branches, regex_value, filtered_branches);
-        if (filtered_branches.size()){
-            switch_to_branch(*filtered_branches[0], pull_after_checkout);
+    if (fast_switch(argc, argv, pattern)){
+        string target_branch;
+        if (best_match(all_branches, pattern, target_branch)){
+            switch_to_branch(target_branch, pull_after_checkout);
         } else {
-            fprintf(stderr, "No branches matching '%s'\n", regex_value);
+            fprintf(stderr, "No branches matching '%s'\n", pattern);
             exit(1);
         }
     }
@@ -149,7 +183,6 @@ int main(int argc, char** argv)
     keypad(stdscr, TRUE);
     use_default_colors();
     start_color();
-
 
     print_window(regex_value, filtered_branches, selected_branch);
 
