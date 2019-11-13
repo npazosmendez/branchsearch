@@ -82,7 +82,7 @@ void switch_to_branch(string branch_name, bool pull_after_checkout){
 void filter_branches(vector<string> &all_branches, char* regex_value, vector<string*> &filtered_branches){
     filtered_branches.clear();
     try{
-        regex regex_(regex_value, std::regex_constants::icase);
+        regex regex_(regex_value, regex_constants::icase);
         for (int i = 0; i < all_branches.size(); ++i){
             if (regex_search(all_branches[i], regex_)){
                 filtered_branches.push_back(&all_branches[i]);
@@ -95,36 +95,38 @@ void filter_branches(vector<string> &all_branches, char* regex_value, vector<str
 
 bool best_match(vector<string> &all_branches, char* pattern, string& res){
     // pattern to lowercase
-    std::transform(pattern, pattern+strlen(pattern), pattern, [](unsigned char c){ return std::tolower(c); });
+    transform(pattern, pattern+strlen(pattern), pattern, ::tolower);
 
-    // take the ones containing the pattern
-    vector<string*> matches;
-    for (string &b: all_branches){
-        // branch to lowercase
-        std::transform(b.begin(), b.end(), b.begin(), [](unsigned char c){ return std::tolower(c); });
-        if (b.find(pattern) != string::npos) matches.push_back(&b);
-    }
-
-    if(!matches.size()) return false;
-
-    // sort by some similarity criteria
-    sort(matches.begin(),matches.end(), [pattern]( const string* a, const string* b)
-        {
+    auto better_match = [pattern]( const string& a, const string& b) {
             // the one starting with the pattern is prefered
-            if(a->find(pattern) == 0 and b->find(pattern) != 0) return true;
-            if(b->find(pattern) == 0 and a->find(pattern) != 0) return false;
+            if(a.find(pattern) == 0 and b.find(pattern) != 0) return true;
+            if(b.find(pattern) == 0 and a.find(pattern) != 0) return false;
 
             // the one closer in length to the pattern is preferd
-            if(a->size()-strlen(pattern) < b->size()-strlen(pattern)) return true;
-            if(b->size()-strlen(pattern) < a->size()-strlen(pattern)) return false;
+            if(a.size()-strlen(pattern) < b.size()-strlen(pattern)) return true;
+            if(b.size()-strlen(pattern) < a.size()-strlen(pattern)) return false;
 
             // tiebreaker
-            return *a < *b;
-        }
-    );
+            return a < b;
+    };
 
-    res = *matches[0]; // only care about the best match here
-    return true;
+    bool found = false;
+    int index = -1;
+    for (int i = 0; i< all_branches.size(); i++){
+        string b = all_branches[i];
+        // branch to lowercase
+        transform(b.begin(), b.end(), b.begin(), ::tolower);
+        if (b.find(pattern) != string::npos) {
+            if(!found or better_match(b, res)){
+                found = true;
+                index = i;
+                res = b;
+            }
+        }
+    }
+
+    if(found) res = all_branches[index];
+    return found;
 }
 
 bool update_branches(int argc, char** argv){
