@@ -110,23 +110,21 @@ bool best_match(vector<string> &all_branches, char* pattern, string& res){
         return a < b;
     };
 
-    bool found = false;
     int index = -1;
     for (int i = 0; i< all_branches.size(); i++){
         string b = all_branches[i];
         // branch to lowercase
         transform(b.begin(), b.end(), b.begin(), ::tolower);
         if (b.find(pattern) != string::npos) {
-            if(!found or better_match(b, res)){
-                found = true;
+            if(index == -1 or better_match(b, res)){
                 index = i;
                 res = b;
             }
         }
     }
 
-    if(found) res = all_branches[index];
-    return found;
+    if(index != -1) res = all_branches[index];
+    return index != -1;
 }
 
 bool update_branches(int argc, char** argv){
