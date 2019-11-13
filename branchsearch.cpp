@@ -102,7 +102,7 @@ bool best_match(vector<string> &all_branches, char* pattern, string& res){
             if(a.find(pattern) == 0 and b.find(pattern) != 0) return true;
             if(b.find(pattern) == 0 and a.find(pattern) != 0) return false;
 
-            // the one closer in length to the pattern is preferd
+            // the one closer in length to the pattern is prefered
             if(a.size()-strlen(pattern) < b.size()-strlen(pattern)) return true;
             if(b.size()-strlen(pattern) < a.size()-strlen(pattern)) return false;
 
