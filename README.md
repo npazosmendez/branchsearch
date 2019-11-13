@@ -13,7 +13,7 @@ A simple terminal branch search for git
 
 - `-u`: It executes a `git fetch` _before_ showing the branches to be selected. It's useful to update branches before diplay.
 
-- `[regex]`: If provided, a `git checkout` is immediately performed to a branch matching the regex. For instance, `bs maste` will most likely switch to `master`.
+- `[pattern]`: If provided, a `git checkout` is immediately performed to a branch containing the pattern. For instance, `bs maste` will most likely switch to `master`.
 
 ## Dependencies
 
