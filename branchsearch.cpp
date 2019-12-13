@@ -33,6 +33,7 @@ vector<string> get_branches(){
     char buffer[MAX_BRANCH_NAME_LENGTH];
     if ((pp = popen(command_all_branches.c_str(), "r")) != 0) {
         while (fgets(buffer, 10000, pp) != 0) {
+            strtok(buffer, "\n"); // remove trailing newline
             string branch_name = string(buffer);
             if(! count(branches.begin(), branches.end(), branch_name)) branches.push_back(branch_name);
         }
@@ -60,6 +61,7 @@ void print_window(char* regex_value, vector<string*> filtered_branches, int sele
         addstr("  ");
         if(i == selected_branch) attrset(COLOR_PAIR(2));
         addstr(filtered_branches[i]->c_str());
+        addstr("\n");
         if(i == selected_branch) attrset(COLOR_PAIR(1));
     }
     if(i < filtered_branches.size()) addstr("...");
@@ -67,6 +69,32 @@ void print_window(char* regex_value, vector<string*> filtered_branches, int sele
     // marker on selected branch
     if(lines > 0) mvaddstr(selected_branch + 2, 0, ">");
     refresh();
+}
+
+void delete_branch(vector<string*> &branches, int target_index){
+    erase();
+    string branch_name = *(branches[target_index]);
+    printw("Delete '%s'? [Y/N]\n", branch_name.c_str());
+    while (1) {
+        if (kbhit()) {
+            int c = getch();
+            if(c == 'Y' or c == 'y'){
+                string command = "git branch -d " + branch_name + " 2>&1";
+                string output;
+                char buff[1000];
+                FILE *out = popen(command.c_str(), "r");
+                while (!feof(out)) if (fgets(buff, sizeof(buff), out) != NULL)
+                    output.append(buff);
+                int status = WEXITSTATUS(pclose(out));
+                if(status){
+                    endwin();
+                    fprintf(stderr, output.c_str());
+                    exit(status);
+                }
+            }
+            break;
+        }
+    }
 }
 
 void switch_to_branch(string branch_name, bool pull_after_checkout){
@@ -169,6 +197,7 @@ int main(int argc, char** argv)
         if (best_match(all_branches, pattern, target_branch)){
             switch_to_branch(target_branch, pull_after_checkout);
         } else {
+            endwin();
             fprintf(stderr, "No branches matching '%s'\n", pattern);
             exit(1);
         }
@@ -202,8 +231,10 @@ int main(int argc, char** argv)
                 if(selected_branch > 0) selected_branch--;
             }else if (c == KEY_DOWN){
                 if(selected_branch < filtered_branches.size() && selected_branch < MAX_BRANCH_SHOWN - 1) selected_branch++;
+            }else if (c == KEY_DC){
+                if(filtered_branches.size()) delete_branch(filtered_branches, selected_branch);
+                all_branches = get_branches();
             }else{
-                // TODO: handle other keys
                 regex_value[index] = c;
                 index++;
             }
