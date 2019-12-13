@@ -88,7 +88,7 @@ void delete_branch(vector<string*> &branches, int target_index){
                 int status = WEXITSTATUS(pclose(out));
                 if(status){
                     endwin();
-                    fprintf(stderr, output.c_str());
+                    fprintf(stderr, "%s", output.c_str());
                     exit(status);
                 }
             }
