@@ -96,7 +96,7 @@ void print_window(char* regex_value, vector<branch_t*> filtered_branches, int se
         if(i == selected_branch) attrset(COLOR_PAIR(2));
         addstr(filtered_branches[i]->name.c_str());
         if(filtered_branches[i]->remote && not filtered_branches[i]->local)
-            addstr(" (R)");
+            addstr(" [R]");
         addstr("\n");
         if(i == selected_branch) attrset(COLOR_PAIR(1));
     }
