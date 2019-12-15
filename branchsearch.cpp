@@ -37,7 +37,7 @@ int run_command(const string& command, vector<string>* out_lines=nullptr, bool f
         for(auto &l : _out_lines) fprintf(stderr, "%s", l.c_str());
         exit(status);
     }
-    *out_lines = _out_lines;
+    if(out_lines) *out_lines = _out_lines;
     return status;
 }
 
@@ -250,8 +250,10 @@ int main(int argc, char** argv){
             }else if (c == KEY_DOWN){
                 if(selected_branch < filtered_branches.size() && selected_branch < MAX_BRANCH_SHOWN - 1) selected_branch++;
             }else if (c == KEY_DC){
-                if(filtered_branches.size()) delete_branch(filtered_branches, selected_branch);
-                all_branches = get_branches(args.locals_only);
+                if(filtered_branches.size() and filtered_branches[selected_branch]->local){
+                    delete_branch(filtered_branches, selected_branch);
+                    all_branches = get_branches(args.locals_only);
+                }
             }else{
                 regex_value[index] = c;
                 index++;
