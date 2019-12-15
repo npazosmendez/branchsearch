@@ -10,8 +10,8 @@
 using namespace std;
 
 #define MAX_BRANCH_SHOWN 20
-#define MAX_BRANCH_NAME_LENGTH 200
-
+#define MAX_BRANCH_NAME_LENGTH 500
+#define MAX_LINE_LEN MAX_BRANCH_NAME_LENGTH
 #define NEW_LINE 10
 
 
@@ -25,30 +25,41 @@ int kbhit(void){
     }
 }
 
+int run_command(const string& command, vector<string>& out_lines, bool fail=true){
+    out_lines.clear();
+    char buff[MAX_LINE_LEN];
+    FILE *f = popen(command.c_str(), "r");
+    while (!feof(f)) if (fgets(buff, sizeof(buff), f) != NULL)
+        out_lines.push_back(buff);
+    int status = WEXITSTATUS(pclose(f));
+    if(status and fail){
+        endwin();
+        for(auto &l : out_lines) fprintf(stderr, "%s", l.c_str());
+        exit(status);
+    }
+    return status;
+}
+
 struct branch_t{
     string name;
     bool local, remote;
 };
 
 vector<branch_t> get_branches(){
-    char buffer[MAX_BRANCH_NAME_LENGTH];
-
     unordered_map<string, branch_t> branches;
     branch_t branch;
-    FILE *pp = popen("git branch -l", "r");
-    while (fgets(buffer, MAX_BRANCH_NAME_LENGTH, pp) != 0) {
-        string branch_name = string(buffer);
-        branch_name = regex_replace(branch_name, std::regex("(^ +)|(\\* )|\n"), "");
-        branch.name = branch_name;
+    vector<string> out_lines;
+
+    run_command("git branch -l", out_lines);
+    for(string& branch_name : out_lines){
+        branch.name = regex_replace(branch_name, std::regex("(^ +)|(\\* )|\n"), "");
         branch.local = true;
         branch.remote = false;
         branches[branch.name] = branch;
     }
-    pclose(pp);
 
-    pp = popen("git branch -r", "r");
-    while (fgets(buffer, MAX_BRANCH_NAME_LENGTH, pp) != 0) {
-        string branch_name = string(buffer);
+    run_command("git branch -r", out_lines);
+    for(string& branch_name : out_lines){
         branch_name = regex_replace(branch_name, std::regex("(^ +)|(\\* )|\n"), "");
         // remove remote's name
         branch_name = branch_name.substr(branch_name.find('/')+1, branch_name.size());
@@ -59,7 +70,6 @@ vector<branch_t> get_branches(){
         }
         branches[branch_name].remote = true;
     }
-    pclose(pp);
 
     vector<branch_t> res;
     for(auto &key_val : branches) res.push_back(key_val.second);
