@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include <vector>
+#include <unordered_map>
 #include <regex>
 #include <string>
 #include <algorithm>
@@ -9,8 +10,8 @@
 using namespace std;
 
 #define MAX_BRANCH_SHOWN 20
-#define MAX_BRANCH_NAME_LENGTH 200
-
+#define MAX_BRANCH_NAME_LENGTH 500
+#define MAX_LINE_LEN MAX_BRANCH_NAME_LENGTH
 #define NEW_LINE 10
 
 
@@ -24,25 +25,60 @@ int kbhit(void){
     }
 }
 
-vector<string> get_branches(){
-    // naughty fix to get raw names, no origin/*
-    // depends on remote name, works for me
-    string command_all_branches = "git for-each-ref --format='%(refname:short)' | sed 's/origin\\///g'";
-    FILE *pp;
-    vector<string> branches;
-    char buffer[MAX_BRANCH_NAME_LENGTH];
-    if ((pp = popen(command_all_branches.c_str(), "r")) != 0) {
-        while (fgets(buffer, 10000, pp) != 0) {
-            strtok(buffer, "\n"); // remove trailing newline
-            string branch_name = string(buffer);
-            if(! count(branches.begin(), branches.end(), branch_name)) branches.push_back(branch_name);
-        }
-        pclose(pp);
+int run_command(const string& command, vector<string>& out_lines, bool fail=true){
+    out_lines.clear();
+    char buff[MAX_LINE_LEN];
+    FILE *f = popen(command.c_str(), "r");
+    while (!feof(f)) if (fgets(buff, sizeof(buff), f) != NULL)
+        out_lines.push_back(buff);
+    int status = WEXITSTATUS(pclose(f));
+    if(status and fail){
+        endwin();
+        for(auto &l : out_lines) fprintf(stderr, "%s", l.c_str());
+        exit(status);
     }
-    return branches;
+    return status;
 }
 
-void print_window(char* regex_value, vector<string*> filtered_branches, int selected_branch){
+struct branch_t{
+    string name;
+    bool local, remote;
+};
+
+vector<branch_t> get_branches(bool locals_only){
+    unordered_map<string, branch_t> branches;
+    branch_t branch;
+    vector<string> out_lines;
+
+    run_command("git branch -l", out_lines);
+    for(string& branch_name : out_lines){
+        branch.name = regex_replace(branch_name, std::regex("(^ +)|(\\* )|\n"), "");
+        branch.local = true;
+        branch.remote = false;
+        branches[branch.name] = branch;
+    }
+
+    if(not locals_only){
+        run_command("git branch -r", out_lines);
+        for(string& branch_name : out_lines){
+            branch_name = regex_replace(branch_name, std::regex("(^ +)|(\\* )|\n"), "");
+            // remove remote's name
+            branch_name = branch_name.substr(branch_name.find('/')+1, branch_name.size());
+            if(!branches.count(branch_name)){
+                branch.name = branch_name;
+                branch.local = false;
+            branches[branch_name] = branch;
+            }
+            branches[branch_name].remote = true;
+        }
+    }
+
+    vector<branch_t> res;
+    for(auto &key_val : branches) res.push_back(key_val.second);
+    return res;
+}
+
+void print_window(char* regex_value, vector<branch_t*> filtered_branches, int selected_branch){
     erase();
 
     // selection may be out of range because of new regex
@@ -60,7 +96,9 @@ void print_window(char* regex_value, vector<string*> filtered_branches, int sele
     for (; i < filtered_branches.size() && i < MAX_BRANCH_SHOWN; ++i){
         addstr("  ");
         if(i == selected_branch) attrset(COLOR_PAIR(2));
-        addstr(filtered_branches[i]->c_str());
+        addstr(filtered_branches[i]->name.c_str());
+        if(filtered_branches[i]->remote && not filtered_branches[i]->local)
+            addstr(" [R]");
         addstr("\n");
         if(i == selected_branch) attrset(COLOR_PAIR(1));
     }
@@ -71,9 +109,9 @@ void print_window(char* regex_value, vector<string*> filtered_branches, int sele
     refresh();
 }
 
-void delete_branch(vector<string*> &branches, int target_index){
+void delete_branch(vector<branch_t*> &branches, int target_index){
     erase();
-    string branch_name = *(branches[target_index]);
+    string branch_name = branches[target_index]->name;
     printw("Delete '%s'? [Y/N]\n", branch_name.c_str());
     while (1) {
         if (kbhit()) {
@@ -97,9 +135,9 @@ void delete_branch(vector<string*> &branches, int target_index){
     }
 }
 
-void switch_to_branch(string branch_name, bool pull_after_checkout){
+void switch_to_branch(branch_t branch, bool pull_after_checkout){
     endwin();
-    string command = "git checkout " + branch_name;
+    string command = "git checkout " + branch.name;
     system(command.c_str());
     if (pull_after_checkout) {
         system("git pull");
@@ -107,12 +145,12 @@ void switch_to_branch(string branch_name, bool pull_after_checkout){
     exit(0);
 }
 
-void filter_branches(vector<string> &all_branches, char* regex_value, vector<string*> &filtered_branches){
+void filter_branches(vector<branch_t> &all_branches, char* regex_value, vector<branch_t*> &filtered_branches){
     filtered_branches.clear();
     try{
         regex regex_(regex_value, regex_constants::icase);
         for (int i = 0; i < all_branches.size(); ++i){
-            if (regex_search(all_branches[i], regex_)){
+            if (regex_search(all_branches[i].name, regex_)){
                 filtered_branches.push_back(&all_branches[i]);
             }
         }
@@ -121,7 +159,7 @@ void filter_branches(vector<string> &all_branches, char* regex_value, vector<str
     }
 }
 
-bool best_match(vector<string> &all_branches, char* pattern, string& res){
+bool best_match(vector<branch_t> &all_branches, char* pattern, branch_t& res){
     // pattern to lowercase
     transform(pattern, pattern+strlen(pattern), pattern, ::tolower);
 
@@ -140,13 +178,13 @@ bool best_match(vector<string> &all_branches, char* pattern, string& res){
 
     int index = -1;
     for (int i = 0; i< all_branches.size(); i++){
-        string b = all_branches[i];
+        string b = all_branches[i].name;
         // branch to lowercase
         transform(b.begin(), b.end(), b.begin(), ::tolower);
         if (b.find(pattern) != string::npos) {
-            if(index == -1 or better_match(b, res)){
+            if(index == -1 or better_match(b, res.name)){
                 index = i;
-                res = b;
+                res = all_branches[i];
             }
         }
     }
@@ -155,50 +193,42 @@ bool best_match(vector<string> &all_branches, char* pattern, string& res){
     return index != -1;
 }
 
-bool update_branches(int argc, char** argv){
-    if (argc <= 1) return false;
-
-    bool pull_after_checkout = false;
-    for (int i = 1; i < argc; i++) {  // ignore program name
-        string arg = argv[i];
-        if (arg == "-u") system("git fetch");
-        else if (arg == "-p") pull_after_checkout = true;
-    }
-    return pull_after_checkout;
-}
-
-bool fast_switch(int argc, char** argv, char* regex_value){
-    for (int i = 1; i < argc; i++) {  // ignore program name
-        if (argv[i][0] != '-'){
-            strcpy(regex_value, argv[i]);
-            return true;
+struct args_t{
+    char* fast_switch = NULL;
+    bool pull_after=false, fetch_before=false, locals_only=false;
+    args_t(int argc, char** argv) {
+        for (int i = 1; i < argc; i++) {
+            string arg = argv[i];
+            if (arg[0] != '-') fast_switch = argv[i];
+            if (arg == "-u") fetch_before = true;
+            if (arg == "-p") pull_after = true;
+            if (arg == "-l") locals_only = true;
         }
     }
-    return false;
-}
+};
 
-int main(int argc, char** argv)
-{
-    bool pull_after_checkout = update_branches(argc, argv);
+int main(int argc, char** argv){
+    args_t args(argc, argv);
+
+    if (args.fetch_before) system("git fetch");
 
     // variables
     char regex_value[MAX_BRANCH_NAME_LENGTH] = {0};
-    char pattern[MAX_BRANCH_NAME_LENGTH] = {0};
     int index = 0;
     int selected_branch = 0;
-    vector<string> all_branches = get_branches();
-    vector<string*> filtered_branches;
+    vector<branch_t> all_branches = get_branches(args.locals_only);
+    vector<branch_t*> filtered_branches;
     for (int i = 0; i < all_branches.size(); ++i){
         filtered_branches.push_back(&all_branches[i]);
     }
 
-    if (fast_switch(argc, argv, pattern)){
-        string target_branch;
-        if (best_match(all_branches, pattern, target_branch)){
-            switch_to_branch(target_branch, pull_after_checkout);
+    if (args.fast_switch != NULL){
+        branch_t target_branch;
+        if (best_match(all_branches, args.fast_switch, target_branch)){
+            switch_to_branch(target_branch, args.pull_after);
         } else {
             endwin();
-            fprintf(stderr, "No branches matching '%s'\n", pattern);
+            fprintf(stderr, "No branches matching '%s'\n", args.fast_switch);
             exit(1);
         }
     }
@@ -226,14 +256,14 @@ int main(int argc, char** argv)
                     regex_value[index] = 0;
                 }
             }else if (c == NEW_LINE){
-                if(filtered_branches.size()) switch_to_branch(*filtered_branches[selected_branch], pull_after_checkout);
+                if(filtered_branches.size()) switch_to_branch(*filtered_branches[selected_branch], args.pull_after);
             }else if (c == KEY_UP){
                 if(selected_branch > 0) selected_branch--;
             }else if (c == KEY_DOWN){
                 if(selected_branch < filtered_branches.size() && selected_branch < MAX_BRANCH_SHOWN - 1) selected_branch++;
             }else if (c == KEY_DC){
                 if(filtered_branches.size()) delete_branch(filtered_branches, selected_branch);
-                all_branches = get_branches();
+                all_branches = get_branches(args.locals_only);
             }else{
                 regex_value[index] = c;
                 index++;
