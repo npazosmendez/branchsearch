@@ -45,7 +45,7 @@ struct branch_t{
     bool local, remote;
 };
 
-vector<branch_t> get_branches(){
+vector<branch_t> get_branches(bool locals_only){
     unordered_map<string, branch_t> branches;
     branch_t branch;
     vector<string> out_lines;
@@ -58,17 +58,19 @@ vector<branch_t> get_branches(){
         branches[branch.name] = branch;
     }
 
-    run_command("git branch -r", out_lines);
-    for(string& branch_name : out_lines){
-        branch_name = regex_replace(branch_name, std::regex("(^ +)|(\\* )|\n"), "");
-        // remove remote's name
-        branch_name = branch_name.substr(branch_name.find('/')+1, branch_name.size());
-        if(!branches.count(branch_name)){
-            branch.name = branch_name;
-            branch.local = false;
-           branches[branch_name] = branch;
+    if(not locals_only){
+        run_command("git branch -r", out_lines);
+        for(string& branch_name : out_lines){
+            branch_name = regex_replace(branch_name, std::regex("(^ +)|(\\* )|\n"), "");
+            // remove remote's name
+            branch_name = branch_name.substr(branch_name.find('/')+1, branch_name.size());
+            if(!branches.count(branch_name)){
+                branch.name = branch_name;
+                branch.local = false;
+            branches[branch_name] = branch;
+            }
+            branches[branch_name].remote = true;
         }
-        branches[branch_name].remote = true;
     }
 
     vector<branch_t> res;
@@ -165,49 +167,41 @@ bool best_match(vector<branch_t> &all_branches, char* pattern, branch_t& res){
     return index != -1;
 }
 
-bool update_branches(int argc, char** argv){
-    if (argc <= 1) return false;
-
-    bool pull_after_checkout = false;
-    for (int i = 1; i < argc; i++) {  // ignore program name
-        string arg = argv[i];
-        if (arg == "-u") system("git fetch");
-        else if (arg == "-p") pull_after_checkout = true;
-    }
-    return pull_after_checkout;
-}
-
-bool fast_switch(int argc, char** argv, char* regex_value){
-    for (int i = 1; i < argc; i++) {  // ignore program name
-        if (argv[i][0] != '-'){
-            strcpy(regex_value, argv[i]);
-            return true;
+struct args_t{
+    char* fast_switch = NULL;
+    bool pull_after=false, fetch_before=false, locals_only=false;
+    args_t(int argc, char** argv) {
+        for (int i = 1; i < argc; i++) {
+            string arg = argv[i];
+            if (arg[0] != '-') fast_switch = argv[i];
+            if (arg == "-u") fetch_before = true;
+            if (arg == "-p") pull_after = true;
+            if (arg == "-l") locals_only = true;
         }
     }
-    return false;
-}
+};
 
-int main(int argc, char** argv)
-{
-    bool pull_after_checkout = update_branches(argc, argv);
+int main(int argc, char** argv){
+    args_t args(argc, argv);
+
+    if (args.fetch_before) system("git fetch");
 
     // variables
     char regex_value[MAX_BRANCH_NAME_LENGTH] = {0};
-    char pattern[MAX_BRANCH_NAME_LENGTH] = {0};
     int index = 0;
     int selected_branch = 0;
-    vector<branch_t> all_branches = get_branches();
+    vector<branch_t> all_branches = get_branches(args.locals_only);
     vector<branch_t*> filtered_branches;
     for (int i = 0; i < all_branches.size(); ++i){
         filtered_branches.push_back(&all_branches[i]);
     }
 
-    if (fast_switch(argc, argv, pattern)){
+    if (args.fast_switch != NULL){
         branch_t target_branch;
-        if (best_match(all_branches, pattern, target_branch)){
-            switch_to_branch(target_branch, pull_after_checkout);
+        if (best_match(all_branches, args.fast_switch, target_branch)){
+            switch_to_branch(target_branch, args.pull_after);
         } else {
-            fprintf(stderr, "No branches matching '%s'\n", pattern);
+            fprintf(stderr, "No branches matching '%s'\n", args.fast_switch);
             exit(1);
         }
     }
@@ -235,7 +229,7 @@ int main(int argc, char** argv)
                     regex_value[index] = 0;
                 }
             }else if (c == NEW_LINE){
-                if(filtered_branches.size()) switch_to_branch(*filtered_branches[selected_branch], pull_after_checkout);
+                if(filtered_branches.size()) switch_to_branch(*filtered_branches[selected_branch], args.pull_after);
             }else if (c == KEY_UP){
                 if(selected_branch > 0) selected_branch--;
             }else if (c == KEY_DOWN){
