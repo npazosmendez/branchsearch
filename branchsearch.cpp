@@ -25,18 +25,19 @@ int kbhit(void){
     }
 }
 
-int run_command(const string& command, vector<string>& out_lines, bool fail=true){
-    out_lines.clear();
+int run_command(const string& command, vector<string>* out_lines=nullptr, bool fail=true){
+    vector<string> _out_lines;
     char buff[MAX_LINE_LEN];
     FILE *f = popen(command.c_str(), "r");
     while (!feof(f)) if (fgets(buff, sizeof(buff), f) != NULL)
-        out_lines.push_back(buff);
+        _out_lines.push_back(buff);
     int status = WEXITSTATUS(pclose(f));
     if(status and fail){
         endwin();
-        for(auto &l : out_lines) fprintf(stderr, "%s", l.c_str());
+        for(auto &l : _out_lines) fprintf(stderr, "%s", l.c_str());
         exit(status);
     }
+    *out_lines = _out_lines;
     return status;
 }
 
@@ -50,7 +51,7 @@ vector<branch_t> get_branches(bool locals_only){
     branch_t branch;
     vector<string> out_lines;
 
-    run_command("git branch -l", out_lines);
+    run_command("git branch -l", &out_lines);
     for(string& branch_name : out_lines){
         branch.name = regex_replace(branch_name, std::regex("(^ +)|(\\* )|\n"), "");
         branch.local = true;
@@ -59,7 +60,7 @@ vector<branch_t> get_branches(bool locals_only){
     }
 
     if(not locals_only){
-        run_command("git branch -r", out_lines);
+        run_command("git branch -r", &out_lines);
         for(string& branch_name : out_lines){
             branch_name = regex_replace(branch_name, std::regex("(^ +)|(\\* )|\n"), "");
             // remove remote's name
@@ -116,20 +117,7 @@ void delete_branch(vector<branch_t*> &branches, int target_index){
     while (1) {
         if (kbhit()) {
             int c = getch();
-            if(c == 'Y' or c == 'y'){
-                string command = "git branch -d " + branch_name + " 2>&1";
-                string output;
-                char buff[1000];
-                FILE *out = popen(command.c_str(), "r");
-                while (!feof(out)) if (fgets(buff, sizeof(buff), out) != NULL)
-                    output.append(buff);
-                int status = WEXITSTATUS(pclose(out));
-                if(status){
-                    endwin();
-                    fprintf(stderr, "%s", output.c_str());
-                    exit(status);
-                }
-            }
+            if(c == 'Y' or c == 'y') run_command("git branch -d " + branch_name + " 2>&1");
             break;
         }
     }
