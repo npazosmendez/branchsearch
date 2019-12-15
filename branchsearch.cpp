@@ -248,7 +248,7 @@ int main(int argc, char** argv){
             }else if (c == KEY_UP){
                 if(selected_branch > 0) selected_branch--;
             }else if (c == KEY_DOWN){
-                if(selected_branch < filtered_branches.size() && selected_branch < MAX_BRANCH_SHOWN - 1) selected_branch++;
+                if(selected_branch < filtered_branches.size()-1 && selected_branch < MAX_BRANCH_SHOWN - 1) selected_branch++;
             }else if (c == KEY_DC){
                 if(filtered_branches.size() and filtered_branches[selected_branch]->local){
                     delete_branch(filtered_branches, selected_branch);
