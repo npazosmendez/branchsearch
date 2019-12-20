@@ -25,17 +25,19 @@ int kbhit(void){
     }
 }
 
-int run_command(const string& command, vector<string>* out_lines=nullptr, bool fail=true){
+int run_command(const string& command, vector<string>* out_lines=nullptr, bool show_failure=true){
     vector<string> _out_lines;
     char buff[MAX_LINE_LEN];
     FILE *f = popen(command.c_str(), "r");
     while (!feof(f)) if (fgets(buff, sizeof(buff), f) != NULL)
         _out_lines.push_back(buff);
     int status = WEXITSTATUS(pclose(f));
-    if(status and fail){
-        endwin();
-        for(auto &l : _out_lines) fprintf(stderr, "%s", l.c_str());
-        exit(status);
+    if(status and show_failure){
+        erase();
+        for(auto &l : _out_lines) addstr(l.c_str());
+        addstr("\n\nPress any key to continue.");
+        while(!kbhit());
+        getch();
     }
     if(out_lines) *out_lines = _out_lines;
     return status;
