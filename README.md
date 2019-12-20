@@ -4,43 +4,29 @@ A simple terminal branch search for git
 
 ![example](img.gif)
 
-## Command line args
+## Usage
 
 `bs` accepts the following command line arguments:
 
-- `-p`: It checkouts to the selected branch and executes a `git pull`
-    immediately afterwards.
+- `-p`: checkout to the selected branch and `git pull` afterwards.
 
-- `-u`: It executes a `git fetch` _before_ showing the branches to be selected. It's useful to update branches before diplay.
+- `-u`: `git fetch` before showing the branches.
 
-- `-l`: List local branches only.
+- `-l`: kist local branches only.
 
-- `[pattern]`: If provided, a `git checkout` is immediately performed to a branch containing the pattern. For instance, `bs maste` will most likely switch to `master`.
+- `[pattern]`: if provided, a `git checkout` is immediately performed to a branch containing the pattern. For instance, `bs maste` will most likely switch to `master`.
 
-## Dependencies
+## Installation
 
-The only dependency you may have to install is `ncurses`. You can read
-how to install it in most distros in [this tutorial](https://www.osetc.com/en/how-to-install-ncurse-library-in-ubuntu-debian-centos-fedora-linux.html).
+The only needed dependency is `ncurses`. You can read
+how to install it in most distros in [this tutorial](https://www.osetc.com/en/how-to-install-ncurse-library-in-ubuntu-debian-centos-fedora-linux.html). Once installed just run:
 
-## Install
 
-You can install branchsearch by cloning the repo:
+```
+sudo make install
+```
 
-`git clone https://github.com/npazosmendez/branchsearch.git`
-
-Go into the repository's folder and run (if you want it automatically installed):
-
-`sudo make install`
-
-Otherwise you may run
-
-`make`
-
-and copy the generated exectable (`bs`) to your preferred location.
-
-#### Disclaimer
-
-Suboptimal in many ways, but more than enough for what I need.
+That will compile the thing and copy the binary to `/bin/`. If you prefer, you may just run `make` and copy the generated exectable (`bs`) to your preferred location.
 
 ## FAQ
 
