@@ -26,18 +26,21 @@ int kbhit(void){
     }
 }
 
-int run_command(const string& command, vector<string>& out_lines, bool fail=true){
-    out_lines.clear();
+int run_command(const string& command, vector<string>* out_lines=nullptr, bool show_failure=true){
+    vector<string> _out_lines;
     char buff[MAX_LINE_LEN];
     FILE *f = popen(command.c_str(), "r");
     while (!feof(f)) if (fgets(buff, sizeof(buff), f) != NULL)
-        out_lines.push_back(buff);
+        _out_lines.push_back(buff);
     int status = WEXITSTATUS(pclose(f));
-    if(status and fail){
-        endwin();
-        for(auto &l : out_lines) fprintf(stderr, "%s", l.c_str());
-        exit(status);
+    if(status and show_failure){
+        erase();
+        for(auto &l : _out_lines) addstr(l.c_str());
+        addstr("\n\nPress any key to continue.");
+        while(!kbhit());
+        getch();
     }
+    if(out_lines) *out_lines = _out_lines;
     return status;
 }
 
@@ -51,7 +54,7 @@ vector<branch_t> get_branches(bool locals_only){
     branch_t branch;
     vector<string> out_lines;
 
-    run_command("git branch -l", out_lines);
+    run_command("git branch -l", &out_lines);
     for(string& branch_name : out_lines){
         branch.name = regex_replace(branch_name, std::regex("(^ +)|(\\* )|\n"), "");
         branch.local = true;
@@ -60,7 +63,7 @@ vector<branch_t> get_branches(bool locals_only){
     }
 
     if(not locals_only){
-        run_command("git branch -r", out_lines);
+        run_command("git branch -r", &out_lines);
         for(string& branch_name : out_lines){
             branch_name = regex_replace(branch_name, std::regex("(^ +)|(\\* )|\n"), "");
             // remove remote's name
@@ -75,7 +78,8 @@ vector<branch_t> get_branches(bool locals_only){
     }
 
     vector<branch_t> res;
-    for(auto &key_val : branches) res.push_back(key_val.second);
+    for(auto &key_val : branches) if(key_val.second.local) res.push_back(key_val.second);
+    for(auto &key_val : branches) if(!key_val.second.local) res.push_back(key_val.second);
     return res;
 }
 
@@ -108,6 +112,19 @@ void print_window(char* regex_value, vector<branch_t*> filtered_branches, int se
     // marker on selected branch
     if(lines > 0) mvaddstr(selected_branch + 2, 0, ">");
     refresh();
+}
+
+void delete_branch(vector<branch_t*> &branches, int target_index){
+    erase();
+    string branch_name = branches[target_index]->name;
+    printw("Delete '%s'? [Y/N]\n", branch_name.c_str());
+    while (1) {
+        if (kbhit()) {
+            int c = getch();
+            if(c == 'Y' or c == 'y') run_command("git branch -d " + branch_name + " 2>&1");
+            break;
+        }
+    }
 }
 
 void switch_to_branch(branch_t branch, bool pull_after_checkout){
@@ -202,6 +219,7 @@ int main(int argc, char** argv){
         if (best_match(all_branches, args.fast_switch, target_branch)){
             switch_to_branch(target_branch, args.pull_after);
         } else {
+            endwin();
             fprintf(stderr, "No branches matching '%s'\n", args.fast_switch);
             exit(1);
         }
@@ -238,9 +256,13 @@ int main(int argc, char** argv){
             }else if (c == KEY_UP){
                 if(selected_branch > 0) selected_branch--;
             }else if (c == KEY_DOWN){
-                if(selected_branch < filtered_branches.size() && selected_branch < max_branch_shown - 1) selected_branch++;
+                if(selected_branch < filtered_branches.size()-1 && selected_branch < MAX_BRANCH_SHOWN - 1) selected_branch++;
+            }else if (c == KEY_DC){
+                if(filtered_branches.size() and filtered_branches[selected_branch]->local){
+                    delete_branch(filtered_branches, selected_branch);
+                    all_branches = get_branches(args.locals_only);
+                }
             }else{
-                // TODO: handle other keys
                 regex_value[index] = c;
                 index++;
             }
