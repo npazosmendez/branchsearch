@@ -9,7 +9,6 @@
 
 using namespace std;
 
-#define MAX_BRANCH_SHOWN 20
 #define MAX_BRANCH_NAME_LENGTH 500
 #define MAX_LINE_LEN MAX_BRANCH_NAME_LENGTH
 #define NEW_LINE 10
@@ -256,7 +255,7 @@ int main(int argc, char** argv){
             }else if (c == KEY_UP){
                 if(selected_branch > 0) selected_branch--;
             }else if (c == KEY_DOWN){
-                if(selected_branch < filtered_branches.size()-1 && selected_branch < MAX_BRANCH_SHOWN - 1) selected_branch++;
+                if(selected_branch < filtered_branches.size()-1 && selected_branch < max_branch_shown - 1) selected_branch++;
             }else if (c == KEY_DC){
                 if(filtered_branches.size() and filtered_branches[selected_branch]->local){
                     delete_branch(filtered_branches, selected_branch);
@@ -268,7 +267,6 @@ int main(int argc, char** argv){
             }
             filter_branches(all_branches, regex_value, filtered_branches);
             print_window(regex_value, filtered_branches, selected_branch);
-
         }
     }
 }
