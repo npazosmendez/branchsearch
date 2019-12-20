@@ -75,7 +75,8 @@ vector<branch_t> get_branches(bool locals_only){
     }
 
     vector<branch_t> res;
-    for(auto &key_val : branches) res.push_back(key_val.second);
+    for(auto &key_val : branches) if(key_val.second.local) res.push_back(key_val.second);
+    for(auto &key_val : branches) if(!key_val.second.local) res.push_back(key_val.second);
     return res;
 }
 
