@@ -12,7 +12,7 @@ A simple terminal branch search for git
 
 - `-u`: `git fetch` before showing the branches.
 
-- `-l`: kist local branches only.
+- `-l`: list local branches only.
 
 - `[pattern]`: if provided, a `git checkout` is immediately performed to a branch containing the pattern. For instance, `bs maste` will most likely switch to `master`.
 
